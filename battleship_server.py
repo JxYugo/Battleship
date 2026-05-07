@@ -48,7 +48,6 @@ def handle_player_data(conn, mask):
         player_boards[p_id] = msg.data['grid']
         print(f"[READY] Player {p_id} has placed ships.")
 
-        # Check if both players are ready to start the game
         if len(player_boards) == 2 and None not in player_slots.values():
             print("[START] Both players ready. Starting battle.")
             broadcast(GameMessage(GameMessage.GAME_START, {"turn": 1}))
