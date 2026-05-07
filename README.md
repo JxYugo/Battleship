@@ -16,3 +16,6 @@
 1. Players take turns placing ships on the board.
 2. After players are done placing ships, they take turns firing on the board.
 3. The first player to hit all the opposing player's ships wins.
+
+### For Collaborators:
+This can be run on the same device for testing, just use the terminal in your IDE to run the server, and create another terminals to run two separate clients, don't change the IP addresses if testing using a single device.
