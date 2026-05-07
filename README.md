@@ -2,7 +2,7 @@
 
 ## Dependencies
 1. Install pygame (in bash, type 'pip install pygame').
-2. TTwo devices for multi-device multiplayer (1 clients, 1 client and server).
+2. Two devices for multi-device multiplayer (1 clients, 1 client and server).
 
 ## How to run
 1. Open PowerShell/CMD and type ipconfig. Look for the IPv4 Address.
