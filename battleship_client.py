@@ -7,6 +7,12 @@ SCREEN = pygame.display.set_mode((DIM * 2 + MARGIN * 3, DIM + 150))
 COLORS = {"sea": (30, 60, 100), "ship": (100, 100, 100), "hit": (255, 50, 50), "miss": (200, 200, 200),
           "bg": (10, 20, 30)}
 
+STATE_CONNECTING = 0
+STATE_PLACING = 1
+STATE_WAITING_START = 2
+STATE_PLAYING = 3
+STATE_GAME_OVER = 4
+
 class BattleClient:
     def __init__(self):
         pygame.init()
@@ -46,21 +52,27 @@ class BattleClient:
         threading.Thread(target=self.network_thread, args=(sock,), daemon=True).start()
 
         while self.running:
+            # --- 1. Process Network Messages (PLACE THE UPDATE HERE) ---
             while not self.q.empty():
                 m = self.q.get()
 
                 if m.msg_type == GameMessage.INIT_PLAYER:
                     self.id = m.data['id']
-                    self.status = f"Player {self.id}: Place 5 ships."
+                    if self.id == 0:
+                        self.status = "WAITING FOR OPPONENT..."
+                    else:
+                        self.status = f"PLAYER {self.id}: PLACE YOUR SHIPS"
+                        self.state = STATE_PLACING
 
                 elif m.msg_type == GameMessage.GAME_START:
-                    self.turn = (self.id == m.data['turn'])
-                    self.status = "Battle Started!"
+                    self.state = STATE_PLAYING
+                    self.turn = (m.data['turn'] == self.id)
+                    self.status = "YOUR TURN!" if self.turn else "OPPONENT'S TURN..."
 
                 elif m.msg_type == GameMessage.SHOT_RESULT:
+                    # Keep your original SHOT_RESULT logic here to update grids/sounds
                     x, y, res, p_id = m.data['x'], m.data['y'], m.data['res'], m.data['p_id']
                     val = -1 if res == "hit" else -2
-
                     if p_id == self.id:
                         self.opp_grid[y][x] = val
                     else:
@@ -70,19 +82,24 @@ class BattleClient:
                         if self.snd_hit: self.snd_hit.play()
                     else:
                         if self.snd_miss: self.snd_miss.play()
-
                     self.turn = (self.id == m.data['next'])
 
                 elif m.msg_type == GameMessage.GAME_OVER:
-
-                    is_winner = (m.data['winner'] == self.id)
-                    self.status = "YOU WIN!" if is_winner else "YOU LOSE!"
+                    winner_id = m.data['winner']
+                    self.state = STATE_GAME_OVER
                     self.turn = False
-
-                    if is_winner:
+                    if winner_id == self.id:
+                        self.status = "MISSION ACCOMPLISHED: YOU WIN!"
                         if self.snd_win: self.snd_win.play()
                     else:
+                        self.status = "FLEET DESTROYED: YOU LOSE!"
                         if self.snd_lose: self.snd_lose.play()
+
+                elif m.msg_type == GameMessage.ERROR:
+                    self.status = m.data['msg']
+                    self.state = STATE_GAME_OVER
+                    self.turn = False
+                    if self.snd_lose: self.snd_lose.play()
 
             for e in pygame.event.get():
                 if e.type == pygame.QUIT: self.running = False

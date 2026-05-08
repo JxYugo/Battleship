@@ -1,104 +1,115 @@
 import socket
 import selectors
+from collections import deque
 from battleship_network import GameMessage
 
-HOST = '127.0.0.1'  # 0.0.0.0 for multi-computer play
+HOST = '0.0.0.0'
 PORT = 65432
-
-
 sel = selectors.DefaultSelector()
-player_slots = {1: None, 2: None}
-player_boards = {}
-hits = {1: 0, 2: 0}
-WIN_SCORE = 5
 
+active_matches = {}
+addr_map = {}
+lobby_queue = deque()
 
-def broadcast(msg_obj):
-    """Sends a message to all connected players."""
-    for conn in list(player_slots.values()):
-        if conn:
+class GameMatch:
+    def __init__(self, p1_conn, p2_conn):
+        self.players = {1: p1_conn, 2: p2_conn}
+        self.boards = {}
+        self.hits = {1: 0, 2: 0}
+        self.win_score = 5
+        self.started = False
+
+    def get_opponent_id(self, p_id):
+        return 2 if p_id == 1 else 1
+
+    def broadcast(self, msg_obj):
+        for conn in self.players.values():
             try:
                 GameMessage.send_msg(conn, msg_obj)
             except:
                 pass
 
+def cleanup_connection(conn):
+    addr = addr_map.get(conn, "Unknown Node")
+    print(f"[DISCONNECT] Cleaning up {addr}")
+
+    if conn in lobby_queue:
+        lobby_queue.remove(conn)
+
+    if conn in active_matches:
+        match = active_matches[conn]
+        opp_id = 1 if match.players[2] == conn else 2
+        opp_conn = match.players[opp_id]
+
+        try:
+            GameMessage.send_msg(opp_conn, GameMessage(GameMessage.ERROR, {"msg": "Opponent Disconnected."}))
+        except:
+            pass
+
+        active_matches.pop(match.players[1], None)
+        active_matches.pop(match.players[2], None)
+
+    try:
+        sel.unregister(conn)
+    except:
+        pass
+    conn.close()
+    addr_map.pop(conn, None)
+
 
 def handle_player_data(conn, mask):
-    """Parallel event handler for incoming player moves."""
-
-    p_id = None
-    for pid, c in player_slots.items():
-        if c == conn:
-            p_id = pid
-            break
-
     msg = GameMessage.recv_msg(conn)
 
     if not msg:
-        print(f"[DISCONNECT] Player {p_id} left.")
-        if p_id:
-            player_slots[p_id] = None
-            if p_id in player_boards:
-                del player_boards[p_id]
-        sel.unregister(conn)
-        conn.close()
+        cleanup_connection(conn)
         return
+
+    match = active_matches.get(conn)
+    if not match: return  # Still in lobby
+
+    p_id = 1 if match.players[1] == conn else 2
+    opp_id = match.get_opponent_id(p_id)
 
     if msg.msg_type == GameMessage.PLACE_SHIPS:
-        player_boards[p_id] = msg.data['grid']
-        print(f"[READY] Player {p_id} has placed ships.")
+        match.boards[p_id] = msg.data['grid']
+        if len(match.boards) == 2:
+            match.started = True
+            match.broadcast(GameMessage(GameMessage.GAME_START, {"turn": 1}))
 
-        # Check if both players are ready to start the game
-        if len(player_boards) == 2 and None not in player_slots.values():
-            print("[START] Both players ready. Starting battle.")
-            broadcast(GameMessage(GameMessage.GAME_START, {"turn": 1}))
-
-    elif msg.msg_type == GameMessage.FIRE_SHOT:
-        opp_id = 2 if p_id == 1 else 1
+    elif msg.msg_type == GameMessage.FIRE_SHOT and match.started:
         x, y = msg.data['x'], msg.data['y']
+        res = "hit" if match.boards[opp_id][y][x] == 1 else "miss"
+        if res == "hit": match.hits[p_id] += 1
 
-        res = "miss"
-        if player_boards[opp_id][y][x] == 1:
-            res = "hit"
-            hits[p_id] += 1
-
-        print(f"[SHOT] Player {p_id} fired at {x},{y}: {res}")
-
-        broadcast(GameMessage(GameMessage.SHOT_RESULT, {
-            "p_id": p_id,
-            "x": x,
-            "y": y,
-            "res": res,
-            "next": opp_id
+        match.broadcast(GameMessage(GameMessage.SHOT_RESULT, {
+            "p_id": p_id, "x": x, "y": y, "res": res, "next": opp_id
         }))
 
-        if hits[p_id] >= WIN_SCORE:
-            print(f"[WIN] Player {p_id} has won the game!")
-            broadcast(GameMessage(GameMessage.GAME_OVER, {"winner": p_id}))
-
+        if match.hits[p_id] >= match.win_score:
+            match.broadcast(GameMessage(GameMessage.GAME_OVER, {"winner": p_id}))
 
 def accept_connection(sock, mask):
-    """Handles new incoming connections and assigns Player IDs."""
     conn, addr = sock.accept()
-
-    p_id = None
-    if player_slots[1] is None:
-        p_id = 1
-    elif player_slots[2] is None:
-        p_id = 2
-
-    if p_id is None:
-        print(f"[REJECT] Connection from {addr} - Server Full.")
-        conn.close()
-        return
-
-    print(f"[CONNECT] Assigned Player {p_id} to {addr}")
     conn.setblocking(False)
-    player_slots[p_id] = conn
+    addr_str = f"{addr[0]}:{addr[1]}"
+    addr_map[conn] = addr_str
+
+    print(f"[CONNECT] {addr_str} joined the lobby.")
     sel.register(conn, selectors.EVENT_READ, handle_player_data)
+    lobby_queue.append(conn)
 
-    GameMessage.send_msg(conn, GameMessage(GameMessage.INIT_PLAYER, {"id": p_id}))
+    if len(lobby_queue) >= 2:
+        p1 = lobby_queue.popleft()
+        p2 = lobby_queue.popleft()
+        new_match = GameMatch(p1, p2)
+        active_matches[p1] = new_match
+        active_matches[p2] = new_match
 
+        GameMessage.send_msg(p1, GameMessage(GameMessage.INIT_PLAYER, {"id": 1}))
+        GameMessage.send_msg(p2, GameMessage(GameMessage.INIT_PLAYER, {"id": 2}))
+        print(f"[MATCH] Created Game for {addr_map[p1]} and {addr_map[p2]}")
+    else:
+        GameMessage.send_msg(conn, GameMessage(GameMessage.INIT_PLAYER, {"id": 0}))
 
 server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -107,15 +118,12 @@ server_sock.listen()
 server_sock.setblocking(False)
 sel.register(server_sock, selectors.EVENT_READ, accept_connection)
 
-print(f"Battleship Server active on {HOST}:{PORT}")
+print(f"Battleship Server active on {PORT}...")
 try:
     while True:
-        events = sel.select(timeout=None)
-        for key, mask in events:
-            callback = key.data
-            callback(key.fileobj, mask)
+        for key, mask in sel.select(timeout=None):
+            key.data(key.fileobj, mask)
 except KeyboardInterrupt:
-    print("\nShutting down server.")
+    pass
 finally:
     sel.close()
-    server_sock.close()
