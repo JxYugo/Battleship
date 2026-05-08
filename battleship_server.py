@@ -65,7 +65,7 @@ def handle_player_data(conn, mask):
         return
 
     match = active_matches.get(conn)
-    if not match: return  # Still in lobby
+    if not match: return
 
     p_id = 1 if match.players[1] == conn else 2
     opp_id = match.get_opponent_id(p_id)

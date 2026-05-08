@@ -52,7 +52,6 @@ class BattleClient:
         threading.Thread(target=self.network_thread, args=(sock,), daemon=True).start()
 
         while self.running:
-            # --- 1. Process Network Messages (PLACE THE UPDATE HERE) ---
             while not self.q.empty():
                 m = self.q.get()
 
@@ -70,7 +69,6 @@ class BattleClient:
                     self.status = "YOUR TURN!" if self.turn else "OPPONENT'S TURN..."
 
                 elif m.msg_type == GameMessage.SHOT_RESULT:
-                    # Keep your original SHOT_RESULT logic here to update grids/sounds
                     x, y, res, p_id = m.data['x'], m.data['y'], m.data['res'], m.data['p_id']
                     val = -1 if res == "hit" else -2
                     if p_id == self.id:
