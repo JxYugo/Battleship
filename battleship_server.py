@@ -1,5 +1,6 @@
 import socket
 import selectors
+import time
 from collections import deque
 from battleship_network import GameMessage
 
@@ -10,6 +11,8 @@ sel = selectors.DefaultSelector()
 active_matches = {}
 addr_map = {}
 lobby_queue = deque()
+loop_count = 0
+last_report_time = time.time()
 
 class GameMatch:
     def __init__(self, p1_conn, p2_conn):
@@ -121,7 +124,23 @@ sel.register(server_sock, selectors.EVENT_READ, accept_connection)
 print(f"Battleship Server active on {PORT}...")
 try:
     while True:
-        for key, mask in sel.select(timeout=None):
+        loop_count += 1
+        current_time = time.time()
+
+        if current_time - last_report_time >= 10:
+            avg_ticks = loop_count / (current_time - last_report_time)
+            active_p = len(addr_map)
+            active_m = len(active_matches) // 2
+
+            print(f"\n--- SERVER HEALTH REPORT ---")
+            print(f"Throughput: {avg_ticks:.2f} ticks/sec")
+            print(f"Load: {active_p} Players | {active_m} Active Matches")
+            print(f"----------------------------\n")
+
+            loop_count = 0
+            last_report_time = current_time
+
+        for key, mask in sel.select(timeout=1.0):
             key.data(key.fileobj, mask)
 except KeyboardInterrupt:
     pass

@@ -1,4 +1,4 @@
-import pygame, socket, threading, queue
+import pygame, socket, threading, queue, time
 from battleship_network import GameMessage
 
 CELL, MARGIN = 40, 20
@@ -23,6 +23,8 @@ class BattleClient:
         self.q = queue.Queue()
         self.id, self.turn, self.ships, self.running = None, False, 0, True
         self.status = "Connecting..."
+        self.state = STATE_CONNECTING
+        self.shot_sent_time = 0
 
         try:
             self.snd_place = pygame.mixer.Sound("PowerUp.wav")
@@ -33,7 +35,7 @@ class BattleClient:
             self.snd_lose = pygame.mixer.Sound("lose.wav")
         except:
             print("Sound files not found in folder. Running in silent mode.")
-            self.snd_place = self.snd_hit = self.snd_miss = None
+            self.snd_place = self.snd_hit = self.snd_miss = self.snd_win = self.snd_lose = None
 
     def network_thread(self, sock):
         while self.running:
@@ -49,6 +51,7 @@ class BattleClient:
             sock.connect(('127.0.0.1', 65432))
         except:
             return
+
         threading.Thread(target=self.network_thread, args=(sock,), daemon=True).start()
 
         while self.running:
@@ -69,6 +72,10 @@ class BattleClient:
                     self.status = "YOUR TURN!" if self.turn else "OPPONENT'S TURN..."
 
                 elif m.msg_type == GameMessage.SHOT_RESULT:
+                    if m.data['p_id'] == self.id and self.shot_sent_time > 0:
+                        latency = (time.perf_counter() - self.shot_sent_time) * 1000
+                        print(f"[METRIC] Round-Trip Latency: {latency:.2f}ms")
+
                     x, y, res, p_id = m.data['x'], m.data['y'], m.data['res'], m.data['p_id']
                     val = -1 if res == "hit" else -2
                     if p_id == self.id:
@@ -119,6 +126,7 @@ class BattleClient:
                     elif self.turn and (MARGIN * 2 + DIM) < mx < (MARGIN * 2 + DIM * 2) and MARGIN < my < MARGIN + DIM:
                         gx, gy = (mx - (MARGIN * 2 + DIM)) // CELL, (my - MARGIN) // CELL
                         if self.opp_grid[gy][gx] == 0:
+                            self.shot_sent_time = time.perf_counter()
                             GameMessage.send_msg(sock, GameMessage(GameMessage.FIRE_SHOT, {"x": gx, "y": gy}))
 
             SCREEN.fill(COLORS["bg"])
