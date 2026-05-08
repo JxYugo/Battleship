@@ -87,7 +87,9 @@ class BattleClient:
                         if self.snd_hit: self.snd_hit.play()
                     else:
                         if self.snd_miss: self.snd_miss.play()
+
                     self.turn = (self.id == m.data['next'])
+                    self.status = "YOUR TURN!" if self.turn else "OPPONENT'S TURN..."
 
                 elif m.msg_type == GameMessage.GAME_OVER:
                     winner_id = m.data['winner']
