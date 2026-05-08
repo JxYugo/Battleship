@@ -17,5 +17,16 @@
 2. After players are done placing ships, they take turns firing on the board.
 3. The first player to hit all the opposing player's ships wins.
 
-### For Collaborators:
+## For Collaborators:
+
+### How to run for testing
+
 This can be run on the same device for testing, just use the terminal in your IDE to run the server, and create another terminals to run two separate clients, don't change the IP addresses if testing using a single device.
+
+### How to evaluate performance metrics
+
+On the terminals where you started the server and the clients:
+- the server sends heartbeats every 10 seconds, you can see active players/node and active matches there along with throughput.
+- the client sends latency/ping information in the terminal where you started it everytime a shot is fired.
+
+
