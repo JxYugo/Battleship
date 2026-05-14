@@ -1,32 +1,46 @@
 # 2-Player Local Multiplayer Battleship Game
 
 ## Dependencies
-1. Install pygame (in bash, type 'pip install pygame').
-2. Two (or more) devices for multi-device multiplayer (n clients, 1 server).
+1. Install pygame (in bash, type `pip install pygame`).
+2. Two or more devices for multi-device multiplayer: one server device and two client/player devices.
+3. Make sure these files are in the same folder:
+   - `battleship_server.py`
+   - `battleship_client.py`
+   - `battleship_network.py`
+   - `run_battleship.py`
 
 ## How to run
-1. Open PowerShell/CMD and type ipconfig. Look for the IPv4 Address.
-2. In server device, open battleship_server.py.
-3. Change the HOST to 0.0.0.0.
-4. In both the server device and the second player device, change battleship_client.py IP (127.0.0.1) to point to the Server's IP address found in Step 1.
-5. Start battleship_server.py on server device.
-6. Start battleship_client.py on both devices.
+1. Open PowerShell/CMD and type `ipconfig`. Look for the IPv4 Address.
+2. In the server device, open `battleship_server.py`.
+3. Make sure the `HOST` is set to `0.0.0.0`.
+4. In both player devices, open `battleship_client.py`.
+5. Change the client IP from `127.0.0.1` to the server IPv4 Address found in Step 1.
+6. Start `battleship_server.py` on the server device.
+7. Start `battleship_client.py` on both player devices.
+8. Click **START GAME** on both client windows.
 
 ## How to Play
-1. Players take turns placing ships on the board.
-2. After players are done placing ships, they take turns firing on the board.
-3. The first player to hit all the opposing player's ships wins.
+1. Each player places 5 ships on the **YOUR FLEET** board.
+2. After both players are done placing ships, the game starts automatically.
+3. During battle, only the player whose status says **YOUR TURN** can click a cell on the **ENEMY RADAR** board to fire a shot.
+4. A red X means hit.
+5. A white circle means miss.
+6. The first player to hit all 5 opposing ships wins.
 
 ## For Collaborators:
 
 ### How to run for testing
 
-This can be run on the same device for testing, just use the terminal in your IDE to run the server, and create another terminals to run two separate clients, don't change the IP addresses if testing using a single device.
+This can be run on the same device for testing.
 
-### How to evaluate performance metrics
+Use the terminal in your IDE to run:
+
+```bash
+python run_battleship.py
+
+## How to evaluate performance metrics:
 
 On the terminals where you started the server and the clients:
-- the server sends heartbeats every 10 seconds, you can see active players/node and active matches there along with throughput.
-- the client sends latency/ping information in the terminal where you started it everytime a shot is fired.
 
-
+the server sends a health report every 10 seconds, showing throughput, active players/nodes, and active matches.
+the client sends latency/ping information in the terminal every time a shot is fired.
