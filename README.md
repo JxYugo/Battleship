@@ -20,12 +20,15 @@
 8. Click **START GAME** on both client windows.
 
 ## How to Play
-1. Each player places 5 ships on the **YOUR FLEET** board.
-2. After both players are done placing ships, the game starts automatically.
-3. During battle, only the player whose status says **YOUR TURN** can click a cell on the **ENEMY RADAR** board to fire a shot.
-4. A red X means hit.
-5. A white circle means miss.
-6. The first player to hit all 5 opposing ships wins.
+
+1. Each player clicks the **START GAME** button.
+2. Each player places 5 ships on the **YOUR FLEET** board.
+3. After both players finish placing ships, the server starts the match.
+4. During battle, only the player whose status says **YOUR TURN** can click a cell on the **ENEMY RADAR** board to fire a shot.
+5. After a shot is fired, the server sends the result to both players.
+6. A red X means hit.
+7. A white circle means miss.
+8. The first player to hit all 5 enemy ships wins.
 
 ## How to evaluate performance metrics:
 
@@ -38,7 +41,7 @@ the client sends latency/ping information in the terminal every time a shot is f
 
 ### How to run for testing
 
-This can be run on the same device for testing.
+This can be run on the same device for testing. This is the easiest testing method because it opens the server and two client windows automatically.
 
 Use the terminal in your IDE to run:
 
