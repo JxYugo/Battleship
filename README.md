@@ -27,6 +27,13 @@
 5. A white circle means miss.
 6. The first player to hit all 5 opposing ships wins.
 
+## How to evaluate performance metrics:
+
+On the terminals where you started the server and the clients:
+
+the server sends a health report every 10 seconds, showing throughput, active players/nodes, and active matches.
+the client sends latency/ping information in the terminal every time a shot is fired.
+
 ## For Collaborators:
 
 ### How to run for testing
@@ -37,10 +44,3 @@ Use the terminal in your IDE to run:
 
 ```bash
 python run_battleship.py
-
-## How to evaluate performance metrics:
-
-On the terminals where you started the server and the clients:
-
-the server sends a health report every 10 seconds, showing throughput, active players/nodes, and active matches.
-the client sends latency/ping information in the terminal every time a shot is fired.
